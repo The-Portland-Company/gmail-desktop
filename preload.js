@@ -9,9 +9,9 @@ ipcRenderer.on('claude-event', (e, ev) => {
   for (const cb of claudeListeners) { try { cb(ev); } catch (_) {} }
 });
 contextBridge.exposeInMainWorld('gmailClaude', {
-  send: (text) => ipcRenderer.send('claude-send', String(text || '')),
+  send: (text, sessionId, resume) =>
+    ipcRenderer.send('claude-send', { text: String(text || ''), sessionId: sessionId || '', resume: !!resume }),
   stop: () => ipcRenderer.send('claude-stop'),
-  reset: () => ipcRenderer.send('claude-reset'),
   onEvent: (cb) => { if (typeof cb === 'function') claudeListeners.add(cb); },
 });
 

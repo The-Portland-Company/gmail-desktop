@@ -138,16 +138,17 @@ app.whenReady().then(() => {
 // subscription session, NOT the API) and stream events to the chat widget. ---
 const CLAUDE_BIN = path.join(os.homedir(), '.local', 'bin', 'claude');
 let claudeChild = null;
-let claudeSession = null;   // one resumable session id for the whole chat
-let claudeStarted = false;  // false until the first turn creates the session
 
 function claudeBin() {
   return fs.existsSync(CLAUDE_BIN) ? CLAUDE_BIN : 'claude';
 }
 
-function runClaude(text) {
+// The renderer owns session identity (so history + switching persist across
+// app restarts): it passes a stable session-id uuid and whether this session
+// has been started yet (resume vs. create).
+function runClaude(text, sessionId, resume) {
   if (claudeChild) return; // one turn at a time
-  if (!claudeSession) claudeSession = crypto.randomUUID();
+  if (!sessionId) sessionId = crypto.randomUUID();
 
   const args = [
     '-p', text,
@@ -155,9 +156,8 @@ function runClaude(text) {
     '--verbose',
     '--dangerously-skip-permissions',
   ];
-  // Reuse the same session so the conversation has memory across turns.
-  if (claudeStarted) args.push('--resume', claudeSession);
-  else args.push('--session-id', claudeSession);
+  if (resume) args.push('--resume', sessionId);
+  else args.push('--session-id', sessionId);
 
   const send = (ev) => { if (win && !win.isDestroyed()) win.webContents.send('claude-event', ev); };
 
@@ -176,7 +176,6 @@ function runClaude(text) {
     return;
   }
   claudeChild = child;
-  claudeStarted = true;
 
   let buf = '';
   child.stdout.on('data', (d) => {
@@ -201,15 +200,13 @@ function runClaude(text) {
   });
 }
 
-ipcMain.on('claude-send', (e, text) => {
-  if (typeof text === 'string' && text.trim()) runClaude(text.trim());
+ipcMain.on('claude-send', (e, payload) => {
+  const p = payload || {};
+  const text = typeof p === 'string' ? p : p.text;
+  if (text && String(text).trim()) runClaude(String(text).trim(), p.sessionId, !!p.resume);
 });
 ipcMain.on('claude-stop', () => {
   if (claudeChild) { try { claudeChild.kill('SIGTERM'); } catch (e) {} }
-});
-ipcMain.on('claude-reset', () => {
-  if (claudeChild) { try { claudeChild.kill('SIGTERM'); } catch (e) {} }
-  claudeChild = null; claudeSession = null; claudeStarted = false;
 });
 
 // Unread badge from the renderer.

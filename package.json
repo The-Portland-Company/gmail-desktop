@@ -1,6 +1,6 @@
 {
   "name": "gmail-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Gmail desktop app with dark email bodies, dock badge, and native notifications",
   "main": "main.js",
   "author": "Spencer Hill",
