@@ -41,8 +41,8 @@
       'border:1px solid rgba(255,255,255,.18);background:rgba(60,64,67,.9);color:#e8eaed;font:14px/26px sans-serif;',
       'text-align:center;cursor:pointer;opacity:.5;transition:opacity .15s;}',
       '#gm-rail-toggle:hover{opacity:1;}',
-      /* grouping control */
-      '#gm-group-bar{display:flex;gap:6px;align-items:center;padding:6px 14px;font:12px/18px "Google Sans",sans-serif;}',
+      /* grouping control — sits inline in the toolbar row that has pagination */
+      '#gm-group-bar{display:inline-flex;gap:6px;align-items:center;margin:0 12px;font:12px/18px "Google Sans",sans-serif;vertical-align:middle;}',
       '#gm-group-bar .gm-lbl{opacity:.7;margin-right:2px;}',
       '#gm-group-bar button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:inherit;',
       'border-radius:14px;padding:3px 12px;cursor:pointer;font:inherit;}',
@@ -227,12 +227,26 @@
     applyGrouping();
   }
 
+  // The pagination cluster ("1–71 of 71" + Older/Newer) lives in the top
+  // toolbar; return it so we can drop the group bar into that same row.
+  function pagerCluster() {
+    var btn = document.querySelector('div[role=main] [aria-label="Older"],'
+      + ' div[role=main] [aria-label="Newer"], [aria-label="Older"], [aria-label="Newer"]');
+    if (!btn) return null;
+    // climb to the wrapper that also holds the "N of M" count span, staying
+    // inside the toolbar so insertion keeps everything on one row.
+    var tb = btn.closest('[gh="tm"]') || btn.closest('[role=toolbar]');
+    var cluster = btn.parentElement;
+    while (cluster && cluster.parentElement && cluster.parentElement !== tb
+      && !/\bof\b/.test(cluster.textContent || '')) cluster = cluster.parentElement;
+    if (cluster && cluster.parentElement) return cluster;
+    return btn.parentElement;
+  }
+
   function addGroupBar() {
     if (document.getElementById('gm-group-bar')) return;
-    var table = listTable(); if (!table) return;
-    // insert above the list: before the scrollable list container
-    var host = table.closest('.ae4') || table.closest('div[role=main] > div') || table.parentElement;
-    if (!host || !host.parentElement) return;
+    var cluster = pagerCluster();
+    if (!cluster || !cluster.parentElement) return; // toolbar not ready yet
     var bar = document.createElement('div');
     bar.id = 'gm-group-bar';
     bar.innerHTML = '<span class="gm-lbl">Group:</span>';
@@ -243,7 +257,8 @@
       b.addEventListener('click', function () { setMode(p[0]); });
       bar.appendChild(b);
     });
-    host.parentElement.insertBefore(bar, host);
+    // drop it into the toolbar row, just before the pagination cluster
+    cluster.parentElement.insertBefore(bar, cluster);
   }
 
   /* ---------------------------------------------------- observe & apply --- */
