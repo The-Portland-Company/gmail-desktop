@@ -1,6 +1,19 @@
-const { ipcRenderer, webFrame } = require('electron');
+const { ipcRenderer, webFrame, contextBridge } = require('electron');
 const fs = require('fs');
 const path = require('path');
+
+// --- Expose a tiny bridge to the LOCAL claude CLI for the chat widget ---
+// The page gets send/stop/reset + an event stream; main.js owns the process.
+const claudeListeners = new Set();
+ipcRenderer.on('claude-event', (e, ev) => {
+  for (const cb of claudeListeners) { try { cb(ev); } catch (_) {} }
+});
+contextBridge.exposeInMainWorld('gmailClaude', {
+  send: (text) => ipcRenderer.send('claude-send', String(text || '')),
+  stop: () => ipcRenderer.send('claude-stop'),
+  reset: () => ipcRenderer.send('claude-reset'),
+  onEvent: (cb) => { if (typeof cb === 'function') claudeListeners.add(cb); },
+});
 
 // --- Dark email bodies: run Dark Reader in the page's main world ---
 // webFrame.executeJavaScript runs in the main world and bypasses the page CSP
@@ -65,10 +78,28 @@ function loadPlugin(name) {
   }
 }
 
+// --- Claude chat widget: inject into the page's main world with the Bartok
+// icon as a data URI (page scripts can't read fs). ---
+function injectChatWidget() {
+  try {
+    const src = fs.readFileSync(path.join(__dirname, 'plugins', 'claude-chat.js'), 'utf8');
+    let icon = '';
+    try {
+      const b = fs.readFileSync(path.join(__dirname, 'assets', 'bartok-128.png'));
+      icon = 'data:image/png;base64,' + b.toString('base64');
+    } catch (e) {}
+    const boot = 'window.__BARTOK_ICON=' + JSON.stringify(icon) + ';\n' + src;
+    webFrame.executeJavaScript(boot).catch((e) => console.error('chat widget exec failed', e));
+  } catch (e) {
+    console.error('chat widget load failed', e);
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   hookNotifications();
   injectDarkReader();
   loadPlugin('gmail-tweaks.js');
+  injectChatWidget();
   reportUnread();
   setInterval(reportUnread, 4000);
   // Gmail is a long-lived SPA; Dark Reader keeps itself applied via its own observer.

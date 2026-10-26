@@ -1,6 +1,9 @@
 const { app, BrowserWindow, session, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
+const crypto = require('crypto');
 
 // Seed Google auth cookies once, so the app is signed in without a fresh login.
 async function importCookies(ses) {
@@ -129,6 +132,84 @@ app.whenReady().then(() => {
     if (win) win.show();
     else createWindow();
   });
+});
+
+// --- Claude Code bridge: drive the user's LOCAL claude CLI (their logged-in
+// subscription session, NOT the API) and stream events to the chat widget. ---
+const CLAUDE_BIN = path.join(os.homedir(), '.local', 'bin', 'claude');
+let claudeChild = null;
+let claudeSession = null;   // one resumable session id for the whole chat
+let claudeStarted = false;  // false until the first turn creates the session
+
+function claudeBin() {
+  return fs.existsSync(CLAUDE_BIN) ? CLAUDE_BIN : 'claude';
+}
+
+function runClaude(text) {
+  if (claudeChild) return; // one turn at a time
+  if (!claudeSession) claudeSession = crypto.randomUUID();
+
+  const args = [
+    '-p', text,
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--dangerously-skip-permissions',
+  ];
+  // Reuse the same session so the conversation has memory across turns.
+  if (claudeStarted) args.push('--resume', claudeSession);
+  else args.push('--session-id', claudeSession);
+
+  const send = (ev) => { if (win && !win.isDestroyed()) win.webContents.send('claude-event', ev); };
+
+  let child;
+  try {
+    child = spawn(claudeBin(), args, {
+      cwd: os.homedir(),
+      env: {
+        ...process.env,
+        CLAUDE_CODE_DISABLE_INLINE_SHELL_RM_PROMPT: '1',
+        CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT: '1',
+      },
+    });
+  } catch (e) {
+    send({ type: 'bridge-error', error: String(e && e.message || e) });
+    return;
+  }
+  claudeChild = child;
+  claudeStarted = true;
+
+  let buf = '';
+  child.stdout.on('data', (d) => {
+    buf += d.toString();
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line) continue;
+      try { send(JSON.parse(line)); }
+      catch (e) { /* non-JSON noise, ignore */ }
+    }
+  });
+  let stderr = '';
+  child.stderr.on('data', (d) => { stderr += d.toString(); });
+  child.on('error', (e) => {
+    send({ type: 'bridge-error', error: String(e && e.message || e) });
+  });
+  child.on('close', (code) => {
+    claudeChild = null;
+    send({ type: 'turn-closed', code, stderr: code ? stderr.slice(-2000) : '' });
+  });
+}
+
+ipcMain.on('claude-send', (e, text) => {
+  if (typeof text === 'string' && text.trim()) runClaude(text.trim());
+});
+ipcMain.on('claude-stop', () => {
+  if (claudeChild) { try { claudeChild.kill('SIGTERM'); } catch (e) {} }
+});
+ipcMain.on('claude-reset', () => {
+  if (claudeChild) { try { claudeChild.kill('SIGTERM'); } catch (e) {} }
+  claudeChild = null; claudeSession = null; claudeStarted = false;
 });
 
 // Unread badge from the renderer.
