@@ -229,29 +229,32 @@
 
   // The pagination cluster ("1–71 of 71" + Older/Newer) lives in the top
   // toolbar; return it so we can drop the group bar into that same row.
-  function pagerCluster() {
-    var btn = document.querySelector('div[role=main] [aria-label="Older"],'
-      + ' div[role=main] [aria-label="Newer"], [aria-label="Older"], [aria-label="Newer"]');
-    if (!btn) return null;
-    // The toolbar ([gh="tm"]) lays its children out horizontally, but the
-    // pagination lives in a vertically-stacked sub-wrapper. Climb to the
-    // pagination's top-level block *within* the toolbar and insert BEFORE that,
-    // so the group bar sits beside the pagination on the toolbar row instead of
-    // pushing "N of M" onto a second line.
-    var tb = btn.closest('[gh="tm"]') || btn.closest('[role=toolbar]');
-    var cluster = btn.parentElement;
-    if (tb) {
-      while (cluster && cluster.parentElement && cluster.parentElement !== tb) {
-        cluster = cluster.parentElement;
-      }
-    }
-    return (cluster && cluster.parentElement) ? cluster : btn.parentElement;
+  // The main list toolbar ([gh="tm"]) whose first icons are select-all /
+  // refresh / overflow(⋮) on the left and pagination on the right.
+  function listToolbar() {
+    var ref = document.querySelector('div[role=main] [aria-label="Refresh"],'
+      + ' div[role=main] [aria-label^="Refresh"], [aria-label="Refresh"]');
+    return ref ? (ref.closest('[gh="tm"]') || ref.closest('[role=toolbar]')) : null;
+  }
+  // Given an element, return its ancestor that is a direct child of the toolbar.
+  function toolbarBlock(tb, el) {
+    var n = el;
+    while (n && n.parentElement && n.parentElement !== tb) n = n.parentElement;
+    return (n && n.parentElement === tb) ? n : null;
   }
 
   function addGroupBar() {
     if (document.getElementById('gm-group-bar')) return;
-    var cluster = pagerCluster();
-    if (!cluster || !cluster.parentElement) return; // toolbar not ready yet
+    var tb = listToolbar();
+    if (!tb) return; // toolbar not ready yet
+    // The overflow "More" (⋮) is the third of the first three icons. Gmail's
+    // toolbar positions its sub-containers (so DOM order != visual order), but
+    // order WITHIN the left icon group is left-to-right — so insert the bar
+    // right after the ⋮ button inside that group.
+    var more = tb.querySelector('[aria-label="More"][role=button], [aria-label="More"],'
+      + ' [aria-label^="More email"]')
+      || tb.querySelector('[aria-label="Refresh"], [aria-label^="Refresh"]');
+    if (!more || !more.parentNode) return;
     var bar = document.createElement('div');
     bar.id = 'gm-group-bar';
     bar.innerHTML = '<span class="gm-lbl">Group:</span>';
@@ -262,8 +265,8 @@
       b.addEventListener('click', function () { setMode(p[0]); });
       bar.appendChild(b);
     });
-    // drop it into the toolbar row, just before the pagination cluster
-    cluster.parentElement.insertBefore(bar, cluster);
+    // place it immediately to the RIGHT of the first three icons
+    more.parentNode.insertBefore(bar, more.nextSibling);
   }
 
   /* ---------------------------------------------------- observe & apply --- */
