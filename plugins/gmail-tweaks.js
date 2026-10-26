@@ -233,14 +233,19 @@
     var btn = document.querySelector('div[role=main] [aria-label="Older"],'
       + ' div[role=main] [aria-label="Newer"], [aria-label="Older"], [aria-label="Newer"]');
     if (!btn) return null;
-    // climb to the wrapper that also holds the "N of M" count span, staying
-    // inside the toolbar so insertion keeps everything on one row.
+    // The toolbar ([gh="tm"]) lays its children out horizontally, but the
+    // pagination lives in a vertically-stacked sub-wrapper. Climb to the
+    // pagination's top-level block *within* the toolbar and insert BEFORE that,
+    // so the group bar sits beside the pagination on the toolbar row instead of
+    // pushing "N of M" onto a second line.
     var tb = btn.closest('[gh="tm"]') || btn.closest('[role=toolbar]');
     var cluster = btn.parentElement;
-    while (cluster && cluster.parentElement && cluster.parentElement !== tb
-      && !/\bof\b/.test(cluster.textContent || '')) cluster = cluster.parentElement;
-    if (cluster && cluster.parentElement) return cluster;
-    return btn.parentElement;
+    if (tb) {
+      while (cluster && cluster.parentElement && cluster.parentElement !== tb) {
+        cluster = cluster.parentElement;
+      }
+    }
+    return (cluster && cluster.parentElement) ? cluster : btn.parentElement;
   }
 
   function addGroupBar() {
