@@ -3,11 +3,11 @@
   "version": "1.0.1",
   "description": "Gmail desktop app with dark email bodies, dock badge, and native notifications",
   "main": "main.js",
-  "author": "Spencer Hill",
+  "author": "The Portland Company",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "package": "electron-packager . Gmail --platform=darwin --arch=arm64 --out=dist --overwrite --app-bundle-id=com.spencerhill.gmail-desktop --app-category-type=public.app-category.productivity --icon=build/icon.icns --ignore=dist"
+    "package": "electron-packager . Gmail --platform=darwin --arch=arm64 --out=dist --overwrite --app-bundle-id=com.theportlandcompany.gmail-desktop --app-category-type=public.app-category.productivity --icon=build/icon.icns --ignore=dist"
   },
   "devDependencies": {
     "electron": "^33.2.1",
