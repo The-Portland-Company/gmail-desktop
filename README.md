@@ -1,6 +1,6 @@
 # Gmail + AI Chatbot (Desktop)
 
-A lightweight macOS Electron wrapper for Gmail with a built-in **Bartok** AI chat
+A lightweight macOS Electron wrapper for Gmail with a built-in **Prime Agent** AI chat
 widget wired to your own local [Claude Code](https://claude.com/claude-code)
 session — so you can tell it to triage, clean up, and act on your inbox in plain
 language. Open source, MIT licensed, built by The Portland Company.
@@ -18,7 +18,7 @@ the app → **Open** (it's ad-hoc signed, so Gatekeeper asks once).
 - Dock unread badge and native notifications.
 - External links open in your **default browser** (Gmail's redirector links included).
 - Message grouping by **Sender / Label / Label → Sender**, inline in the toolbar.
-- **Bartok** AI chat widget (bottom-right) wired to your local Claude Code
+- **Prime Agent** AI chat widget (bottom-right) wired to your local Claude Code
   session, with persisted, switchable chat sessions, a live task list with
   checkboxes, and red/green/orange status indicators.
 
@@ -26,7 +26,7 @@ the app → **Open** (it's ad-hoc signed, so Gatekeeper asks once).
 
 The widget drives the `claude` CLI already installed on your Mac, using **your
 own logged-in Claude subscription** — no API key, nothing stored in this app.
-Click the Bartok circle in the bottom-right, type a request, and watch it work.
+Click the Prime Agent circle in the bottom-right, type a request, and watch it work.
 
 Install prerequisites first:
 
@@ -35,7 +35,7 @@ Install prerequisites first:
    npm install -g @anthropic-ai/claude-code   # or: curl -fsSL https://claude.com/install.sh | sh
    claude            # sign in with your Claude account, then quit
    ```
-2. Launch Gmail, open the Bartok widget, and give it a prompt. For example:
+2. Launch Gmail, open the Prime Agent widget, and give it a prompt. For example:
 
    > Go through my inbox, archive every newsletter and promotional email from
    > the last week, star anything from a real person that mentions an invoice or

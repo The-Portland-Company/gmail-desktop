@@ -1,4 +1,4 @@
-// Claude chat widget — a floating Bartok button (bottom-right) that expands
+// Claude chat widget — a floating Prime Agent button (bottom-right) that expands
 // into a chat panel driven by the LOCAL claude CLI (via window.gmailClaude).
 // Shows a live task list with checkboxes and red/green/orange status icons.
 // Chat history persists in localStorage as switchable sessions; each session
@@ -8,11 +8,11 @@
   window.__gmailClaudeWidget = true;
   if (!window.gmailClaude) { console.warn('gmailClaude bridge missing'); return; }
 
-  var ICON = window.__BARTOK_ICON || '';
+  var ICON = window.__PRIME_AGENT_ICON || '';
 
   /* ------------------------------------------------ session persistence --- */
-  var LS_SESSIONS = 'bartok.sessions';
-  var LS_ACTIVE = 'bartok.activeSession';
+  var LS_SESSIONS = 'prime-agent.sessions';
+  var LS_ACTIVE = 'prime-agent.activeSession';
   function uuid() {
     try { return crypto.randomUUID(); }
     catch (e) { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -45,7 +45,7 @@
 
   /* -------------------------------------------------------------- shell --- */
   var host = document.createElement('div');
-  host.id = 'bartok-claude-host';
+  host.id = 'prime-agent-claude-host';
   host.setAttribute('data-darkreader-ignore', '');
   host.style.cssText = 'all:initial;position:fixed;z-index:2147483647;';
   document.documentElement.appendChild(host);
@@ -139,15 +139,15 @@
     .stop { background:#ef4444; color:#fff; } .stop:hover { background:#d63d3d; }
   </style>
 
-  <button class="fab" title="Bartok · Claude Code">
-    <img src="${ICON}" alt="Bartok"/>
+  <button class="fab" title="Prime Agent · Claude Code">
+    <img src="${ICON}" alt="Prime Agent"/>
     <span class="dot idle"></span>
   </button>
 
   <section class="panel">
     <div class="head">
       <img src="${ICON}" alt=""/>
-      <span class="title">Bartok</span>
+      <span class="title">Prime Agent</span>
       <span class="state">idle</span>
       <button class="sessions" title="Chats">☰</button>
       <button class="new" title="New chat">+</button>
@@ -163,7 +163,7 @@
     <div class="tasks hidden"><div class="lbl">Tasks</div><div class="tasklist"></div></div>
     <div class="log"></div>
     <div class="foot">
-      <textarea class="input" placeholder="Ask Bartok to clean things up…"></textarea>
+      <textarea class="input" placeholder="Ask Prime Agent to clean things up…"></textarea>
       <button class="send">Send</button>
       <button class="stop hidden">Stop</button>
     </div>
@@ -228,7 +228,7 @@
     logEl.innerHTML = '';
     (s.messages || []).forEach(function (m) { addBubble(m.cls, m.text); });
     renderTasks(s.todos || []);
-    titleEl.textContent = s.title || 'Bartok';
+    titleEl.textContent = s.title || 'Prime Agent';
     setState('idle');
   }
 

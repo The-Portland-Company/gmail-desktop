@@ -78,17 +78,17 @@ function loadPlugin(name) {
   }
 }
 
-// --- Claude chat widget: inject into the page's main world with the Bartok
+// --- Claude chat widget: inject into the page's main world with the Prime Agent
 // icon as a data URI (page scripts can't read fs). ---
 function injectChatWidget() {
   try {
     const src = fs.readFileSync(path.join(__dirname, 'plugins', 'claude-chat.js'), 'utf8');
     let icon = '';
     try {
-      const b = fs.readFileSync(path.join(__dirname, 'assets', 'bartok-128.png'));
+      const b = fs.readFileSync(path.join(__dirname, 'assets', 'prime-agent-128.png'));
       icon = 'data:image/png;base64,' + b.toString('base64');
     } catch (e) {}
-    const boot = 'window.__BARTOK_ICON=' + JSON.stringify(icon) + ';\n' + src;
+    const boot = 'window.__PRIME_AGENT_ICON=' + JSON.stringify(icon) + ';\n' + src;
     webFrame.executeJavaScript(boot).catch((e) => console.error('chat widget exec failed', e));
   } catch (e) {
     console.error('chat widget load failed', e);
