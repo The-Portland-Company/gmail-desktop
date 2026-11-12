@@ -146,7 +146,9 @@ function claudeBin() {
 // The renderer owns session identity (so history + switching persist across
 // app restarts): it passes a stable session-id uuid and whether this session
 // has been started yet (resume vs. create).
-function runClaude(text, sessionId, resume) {
+const VALID_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+
+function runClaude(text, sessionId, resume, model, effort) {
   if (claudeChild) return; // one turn at a time
   if (!sessionId) sessionId = crypto.randomUUID();
 
@@ -156,6 +158,9 @@ function runClaude(text, sessionId, resume) {
     '--verbose',
     '--dangerously-skip-permissions',
   ];
+  // Model + effort are native claude CLI flags (--model, --effort low|medium|high|xhigh|max).
+  if (model && String(model).trim()) args.push('--model', String(model).trim());
+  if (effort && VALID_EFFORT.has(String(effort).trim())) args.push('--effort', String(effort).trim());
   if (resume) args.push('--resume', sessionId);
   else args.push('--session-id', sessionId);
 
@@ -203,7 +208,7 @@ function runClaude(text, sessionId, resume) {
 ipcMain.on('claude-send', (e, payload) => {
   const p = payload || {};
   const text = typeof p === 'string' ? p : p.text;
-  if (text && String(text).trim()) runClaude(String(text).trim(), p.sessionId, !!p.resume);
+  if (text && String(text).trim()) runClaude(String(text).trim(), p.sessionId, !!p.resume, p.model, p.effort);
 });
 ipcMain.on('claude-stop', () => {
   if (claudeChild) { try { claudeChild.kill('SIGTERM'); } catch (e) {} }

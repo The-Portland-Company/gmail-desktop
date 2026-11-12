@@ -9,8 +9,11 @@ ipcRenderer.on('claude-event', (e, ev) => {
   for (const cb of claudeListeners) { try { cb(ev); } catch (_) {} }
 });
 contextBridge.exposeInMainWorld('gmailClaude', {
-  send: (text, sessionId, resume) =>
-    ipcRenderer.send('claude-send', { text: String(text || ''), sessionId: sessionId || '', resume: !!resume }),
+  send: (text, sessionId, resume, opts) =>
+    ipcRenderer.send('claude-send', {
+      text: String(text || ''), sessionId: sessionId || '', resume: !!resume,
+      model: (opts && opts.model) || '', effort: (opts && opts.effort) || '',
+    }),
   stop: () => ipcRenderer.send('claude-stop'),
   onEvent: (cb) => { if (typeof cb === 'function') claudeListeners.add(cb); },
 });

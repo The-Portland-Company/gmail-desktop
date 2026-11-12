@@ -13,6 +13,8 @@
   /* ------------------------------------------------ session persistence --- */
   var LS_SESSIONS = 'prime-agent.sessions';
   var LS_ACTIVE = 'prime-agent.activeSession';
+  var LS_MODEL = 'prime-agent.model';
+  var LS_EFFORT = 'prime-agent.effort';
   function uuid() {
     try { return crypto.randomUUID(); }
     catch (e) { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -130,7 +132,14 @@
     .msg.tool { align-self:flex-start; background:transparent; color:#80868b; font-size:11px; padding:2px 4px; font-style:italic; }
     .msg.err { align-self:flex-start; background:#3a1e1e; color:#f7b4b4; }
 
-    .foot { display:flex; gap:8px; padding:10px; border-top:1px solid #3c4043; background:#17181b; }
+    .footwrap { border-top:1px solid #3c4043; background:#17181b; }
+    .opts { display:flex; gap:8px; padding:8px 10px 0; }
+    .opts label { flex:1; display:flex; flex-direction:column; gap:3px; font-size:10px;
+      text-transform:uppercase; letter-spacing:.05em; color:#80868b; }
+    .opts select { background:#202124; color:#e8eaed; border:1px solid #3c4043; border-radius:8px;
+      padding:6px 8px; font-size:12px; outline:none; cursor:pointer; }
+    .opts select:focus { border-color:#5f6368; }
+    .foot { display:flex; gap:8px; padding:10px; }
     .foot textarea { flex:1; resize:none; height:38px; max-height:120px; background:#202124; color:#e8eaed;
       border:1px solid #3c4043; border-radius:10px; padding:9px 11px; font-size:13px; outline:none; }
     .foot textarea:focus { border-color:#5f6368; }
@@ -162,10 +171,32 @@
 
     <div class="tasks hidden"><div class="lbl">Tasks</div><div class="tasklist"></div></div>
     <div class="log"></div>
-    <div class="foot">
-      <textarea class="input" placeholder="Ask Prime Agent to clean things up…"></textarea>
-      <button class="send">Send</button>
-      <button class="stop hidden">Stop</button>
+    <div class="footwrap">
+      <div class="opts">
+        <label>Model
+          <select class="model">
+            <option value="claude-opus-4-8">Opus 4.8</option>
+            <option value="claude-sonnet-5-5">Sonnet 5.5</option>
+            <option value="claude-haiku-5-5">Haiku 5.5</option>
+            <option value="claude-fable-5-2">Fable 5.2</option>
+          </select>
+        </label>
+        <label>Effort
+          <select class="effort">
+            <option value="">Default</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="xhigh">Xhigh</option>
+            <option value="max">Max</option>
+          </select>
+        </label>
+      </div>
+      <div class="foot">
+        <textarea class="input" placeholder="Ask Prime Agent to clean things up…"></textarea>
+        <button class="send">Send</button>
+        <button class="stop hidden">Stop</button>
+      </div>
     </div>
   </section>`;
 
@@ -174,6 +205,14 @@
   var titleEl = $('.head .title'), stateEl = $('.state');
   var logEl = $('.log'), tasksBox = $('.tasks'), taskList = $('.tasklist');
   var input = $('.input'), sendBtn = $('.send'), stopBtn = $('.stop'), minBtn = $('.min');
+  var modelSel = $('.model'), effortSel = $('.effort');
+
+  // Restore + persist model/effort selection (defaults: Opus 4.8, CLI-default effort).
+  try { modelSel.value = localStorage.getItem(LS_MODEL) || 'claude-opus-4-8'; } catch (e) {}
+  if (!modelSel.value) modelSel.value = 'claude-opus-4-8';
+  try { effortSel.value = localStorage.getItem(LS_EFFORT) || ''; } catch (e) {}
+  modelSel.addEventListener('change', function () { try { localStorage.setItem(LS_MODEL, modelSel.value); } catch (e) {} });
+  effortSel.addEventListener('change', function () { try { localStorage.setItem(LS_EFFORT, effortSel.value); } catch (e) {} });
   var sessionsBtn = $('.sessions'), newBtn = $('.new'), drawer = $('.drawer'), dcloseBtn = $('.dclose'),
       newInDrawer = $('.newbtn'), slist = $('.slist');
 
@@ -315,7 +354,8 @@
     addMsg('user', text);
     input.value = ''; input.style.height = '38px';
     setState('working');
-    window.gmailClaude.send(text, s.id, !!s.started); // resume once the session has had a turn
+    // resume once the session has had a turn; carry the chosen model + effort
+    window.gmailClaude.send(text, s.id, !!s.started, { model: modelSel.value, effort: effortSel.value });
     s.started = true; saveSessions();
   }
 
