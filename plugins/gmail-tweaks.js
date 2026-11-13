@@ -720,6 +720,7 @@
       // start below the list toolbar so the Group / View controls stay reachable
       var top = pr.top, tb = listToolbar();
       if (tb && tb.offsetHeight) { var tr = tb.getBoundingClientRect(); if (tr.bottom > top && tr.bottom < pr.bottom - 80) top = tr.bottom; }
+      top += 15;   // clear the list toolbar so cards don't overlap the controls above
       box.style.left = pr.left + 'px'; box.style.top = top + 'px';
       box.style.width = pr.width + 'px'; box.style.height = (pr.bottom - top) + 'px';
       box.style.background = bg.color;
