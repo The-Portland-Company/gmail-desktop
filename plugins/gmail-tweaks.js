@@ -92,7 +92,7 @@
       '#gm-cards .gm-stack-h .gm-count{flex:none;opacity:.8;font-weight:500;background:rgba(255,255,255,.1);border-radius:10px;padding:0 8px;}',
       '#gm-cards .gm-stack-h .gm-next{flex:none;margin-left:auto;opacity:.6;font-weight:500;padding:0 6px;border-radius:10px;}',
       '#gm-cards .gm-stack-h .gm-next:hover{opacity:1;background:rgba(255,255,255,.1);}',
-      '#gm-cards .gm-stack-b{position:relative;height:180px;}',
+      '#gm-cards .gm-stack-b{position:relative;height:116px;}',
       /* hover focus: the hovered stack spreads out, everything else dims */
       '#gm-cards .gm-stack{position:relative;transition:opacity .22s;}',
       '#gm-cards .gm-sec,#gm-cards .gm-opts{transition:opacity .22s;}',
@@ -100,10 +100,12 @@
       '#gm-cards .gm-stack.gm-focus{z-index:30;}',
       '#gm-cards .gm-pad{position:absolute;display:none;z-index:50;}',
       '#gm-cards .gm-stack.gm-focus .gm-card{box-shadow:0 4px 10px rgba(0,0,0,.22),0 18px 40px rgba(0,0,0,.32);}',
-      '#gm-cards .gm-card{position:absolute;left:0;right:0;bottom:0;height:156px;box-sizing:border-box;padding:10px 12px;display:flex;flex-direction:column;',
+      /* compact at rest (sender + 2 lines of subject); the hovered stack's cards grow to full size */
+      '#gm-cards .gm-card{position:absolute;left:0;right:0;top:24px;height:92px;box-sizing:border-box;padding:10px 12px;display:flex;flex-direction:column;',
       'border-radius:18px;background:#2b2c30;color:#e8eaed;border:5px solid #fff;',
       'box-shadow:0 2px 6px rgba(0,0,0,.14),0 10px 24px rgba(0,0,0,.18);transform-origin:top center;cursor:pointer;overflow:hidden;',
-      'transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .38s,box-shadow .2s;}',
+      'transition:transform .38s cubic-bezier(.2,.8,.2,1),height .28s cubic-bezier(.2,.8,.2,1),opacity .38s,box-shadow .2s;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card{height:224px;padding-bottom:46px;}',
       '#gm-cards .gm-card:hover{box-shadow:0 3px 8px rgba(0,0,0,.18),0 14px 30px rgba(0,0,0,.24);}',
       'body.gm-stack-tilted #gm-cards .gm-card{transform-origin:center center;}',
       'body.gm-cards-on.gm-stack-tilted #gm-cards.gm-show{gap:36px 30px;}',
@@ -120,11 +122,25 @@
       '#gm-cards .gm-card.gm-top .gm-badge{display:inline-block;}',
       /* full subject: wraps instead of being cut to one line (up to 4 lines) */
       '#gm-cards .gm-c-sub{flex:none;font:500 14px/20px "Google Sans",sans-serif;margin-top:6px;white-space:normal;overflow-wrap:anywhere;',
-      'display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}',
-      '#gm-cards .gm-c-snip{flex:1 1 0;min-height:0;font:12px/17px Roboto,sans-serif;opacity:.62;margin-top:4px;overflow:hidden;}',
-      '#gm-cards .gm-c-labels{flex:none;order:3;display:flex;gap:4px;overflow:hidden;white-space:nowrap;margin-top:4px;}',
-      '#gm-cards .gm-c-labels:empty{display:none;}',
+      'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
+      '#gm-cards .gm-stack.gm-focus .gm-c-sub{-webkit-line-clamp:4;}',
+      /* excerpt + labels only on the hovered stack */
+      '#gm-cards .gm-c-snip{display:none;flex:none;font:12px/17px Roboto,sans-serif;opacity:.66;margin-top:6px;overflow:hidden;overflow-wrap:anywhere;',
+      '-webkit-line-clamp:3;-webkit-box-orient:vertical;}',
+      '#gm-cards .gm-stack.gm-focus .gm-c-snip{display:-webkit-box;}',
+      '#gm-cards .gm-c-labels{display:none;flex:none;order:3;gap:4px;overflow:hidden;white-space:nowrap;margin-top:6px;}',
+      '#gm-cards .gm-stack.gm-focus .gm-c-labels{display:flex;}',
+      '#gm-cards .gm-stack.gm-focus .gm-c-labels:empty{display:none;}',
       '#gm-cards .gm-c-labels span{font:10px/15px Roboto,sans-serif;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.12);}',
+      /* per-card Archive / Delete, shown while the pointer is on the card */
+      '#gm-cards .gm-acts{position:absolute;right:8px;bottom:8px;display:none;gap:6px;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card:hover .gm-acts{display:flex;}',
+      '#gm-cards .gm-acts button{width:30px;height:30px;padding:0;border:0;border-radius:50%;cursor:pointer;display:flex;',
+      'align-items:center;justify-content:center;background:rgba(255,255,255,.14);color:inherit;transition:background .15s;}',
+      '#gm-cards.gm-light .gm-acts button{background:rgba(0,0,0,.08);}',
+      '#gm-cards .gm-acts button:hover{background:#8ab4f8;color:#202124;}',
+      '#gm-cards .gm-acts button.gm-del:hover{background:#f28b82;color:#202124;}',
+      '#gm-cards .gm-card.gm-going{opacity:.25 !important;pointer-events:none !important;}',
       '#gm-cards .gm-unread .gm-c-sub{font-weight:700;}',
       '#gm-cards .gm-unread .gm-c-top{font-weight:600;}',
       '#gm-cards .gm-unread .gm-c-from,#gm-cards .gm-unread .gm-c-date{opacity:1;}',
@@ -453,9 +469,73 @@
     focusSt = st;
     if (old) { old.classList.remove('gm-focus'); if (old.isConnected) layoutStack(old); }
     if (box) box.classList.toggle('gm-dim', !!st);
-    if (st) { st.classList.add('gm-focus'); layoutStack(st); }
+    if (st) { st.classList.add('gm-focus'); layoutStack(st); st._cards.forEach(loadExcerpt); }
+  }
+  // Excerpt for a card: Gmail's own snippet when the list shows one, otherwise the opening
+  // text of the latest message, read from Gmail's print view (fetched once, on first hover).
+  var excerptCache = {};
+  function htmlToText(h) {
+    return h.replace(/<(style|script|head|title)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+      .replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(+n); }).replace(/&amp;/gi, '&')
+      .replace(/[\u034f\u00ad\u200b-\u200f\u2060\ufeff\u2007\u00a0]/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+  }
+  function fetchExcerpt(id) {
+    if (!excerptCache[id]) {
+      excerptCache[id] = fetch(location.pathname + '?ui=2&view=pt&search=all&th=' + encodeURIComponent(id), { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (t) {
+          var i = t.lastIndexOf('class="message"');
+          if (i < 0) return '';
+          var m = t.slice(i), j = m.indexOf('cellpadding=12');
+          return htmlToText(j > -1 ? m.slice(m.indexOf('>', j) + 1) : m).slice(0, 260);
+        })
+        .catch(function () { delete excerptCache[id]; return ''; });
+    }
+    return excerptCache[id];
+  }
+  function loadExcerpt(c) {
+    if (c._excerpt || !c._row || !c._snipEl) return;
+    c._excerpt = true;
+    if (c._snipEl.textContent) return;
+    var el = c._row.querySelector('[data-legacy-thread-id]');
+    var id = el && el.getAttribute('data-legacy-thread-id');
+    if (!id) return;
+    fetchExcerpt(id).then(function (t) { if (t && c.isConnected) c._snipEl.textContent = t; });
   }
   function isSpread(st) { return focusSt === st && st._cards.length > 1 && !stackOpen.has(st._key); }
+  // Archive / Delete act through Gmail's own per-row buttons (present in every list row).
+  var ACTS = {
+    Archive: { sel: 'li[data-tooltip="Archive"], li.brq', d: 'M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z' },
+    Delete: { sel: 'li[data-tooltip="Delete"], li.bru', d: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z' }
+  };
+  function rowAction(r, name) {
+    try {
+      var el = r.querySelector(ACTS[name].sel);
+      if (!el) return false;
+      ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(function (t) {
+        el.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window }));
+      });
+      return true;
+    } catch (e) { return false; }
+  }
+  function actButton(name, r, card) {
+    var b = mk('button', name === 'Delete' ? 'gm-del' : 'gm-arc');
+    b.title = name; b.setAttribute('aria-label', name);
+    var ns = 'http://www.w3.org/2000/svg', sv = document.createElementNS(ns, 'svg'), pa = document.createElementNS(ns, 'path');
+    sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('width', '16'); sv.setAttribute('height', '16');
+    pa.setAttribute('d', ACTS[name].d); pa.setAttribute('fill', 'currentColor');
+    sv.appendChild(pa); b.appendChild(sv);
+    b.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      if (!rowAction(r, name)) return;
+      card.classList.add('gm-going');   // Gmail removes the row, which redraws the cards
+      setTimeout(function () { if (card.isConnected) card.classList.remove('gm-going'); }, 2500);
+    });
+    return b;
+  }
   function layoutStack(st) {
     var cards = st._cards, n = cards.length, off = (stackOff[st._key] || 0) % n;
     if (st._pad) st._pad.style.display = 'none';
@@ -463,8 +543,8 @@
       // lay every card out in a grid centred on the stack (nudged only to stay on screen)
       var body = st.querySelector('.gm-stack-b'), box = document.getElementById('gm-cards');
       var sr = body.getBoundingClientRect(), br = box.getBoundingClientRect(), gap = 16;
-      var w = sr.width, h = cards[0].offsetHeight;
-      var baseL = sr.left, baseT = sr.bottom - h;                 // where a resting card sits
+      var w = sr.width, h = 224;                                  // full (hovered) card height
+      var baseL = sr.left, baseT = sr.top + 24;                   // where a resting card sits
       var boxR = br.left + box.clientWidth;                       // excludes the scrollbar
       var fit = Math.max(1, Math.floor((boxR - br.left - 32 + gap) / (w + gap)));
       var cols = Math.min(fit, n <= 3 ? n : n === 4 ? 2 : 3);
@@ -517,10 +597,16 @@
     top.appendChild(mk('span', 'gm-c-date', d.date));
     c.appendChild(top);
     c.appendChild(mk('div', 'gm-c-sub', d.subject));
-    c.appendChild(mk('div', 'gm-c-snip', d.snippet));
+    c._row = r;
+    c._snipEl = mk('div', 'gm-c-snip', d.snippet);
+    c.appendChild(c._snipEl);
     var lb = mk('div', 'gm-c-labels');
     d.labels.slice(0, 4).forEach(function (l) { lb.appendChild(mk('span', '', l)); });
     c.appendChild(lb);
+    var acts = mk('div', 'gm-acts');
+    acts.appendChild(actButton('Archive', r, c));
+    acts.appendChild(actButton('Delete', r, c));
+    c.appendChild(acts);
     c.title = d.subject;
     c.addEventListener('click', function () {
       if (st._cards.length > 1 && !stackOpen.has(st._key) && !isSpread(st) && c._pos > 0) { stackOff[st._key] = i; layoutStack(st); }
@@ -593,7 +679,14 @@
       var pr = pane.getBoundingClientRect();
       if (pr.width < 80 || pr.height < 80) { hideCards(); return; }
       var box = document.getElementById('gm-cards');
-      if (!box) { box = mk('div'); box.id = 'gm-cards'; document.body.appendChild(box); cardSig = ''; }
+      if (!box) {
+        box = mk('div'); box.id = 'gm-cards'; document.body.appendChild(box); cardSig = '';
+        // safety net: if the pointer is somewhere else, the focused stack lets go
+        box.addEventListener('mousemove', function (e) {
+          if (focusSt && !focusSt.contains(e.target)) { var f = focusSt; clearTimeout(focusT); focusT = setTimeout(function () { if (focusSt === f) setFocus(null); }, 200); }
+        });
+        box.addEventListener('mouseleave', function () { clearTimeout(focusT); focusT = setTimeout(function () { setFocus(null); }, 200); });
+      }
       var bg = areaBg(pane);
       // start below the list toolbar so the Group / View controls stay reachable
       var top = pr.top, tb = listToolbar();
@@ -625,9 +718,14 @@
           }
         });
       }
+      var keepKey = focusSt ? focusSt._key : null;
       clearTimeout(focusT); focusSt = null; box.classList.remove('gm-dim');
       box.textContent = '';
       box.appendChild(frag);
+      if (keepKey) {
+        var again = [].slice.call(box.querySelectorAll('.gm-stack')).filter(function (x) { return x._key === keepKey; })[0];
+        if (again) setFocus(again);
+      }
     } catch (e) { /* leave the list usable on error */ }
   }
   function applyView() {
