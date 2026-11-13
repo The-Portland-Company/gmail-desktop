@@ -105,7 +105,7 @@
       'border-radius:18px;background:#2b2c30;color:#e8eaed;border:5px solid #fff;',
       'box-shadow:0 2px 6px rgba(0,0,0,.14),0 10px 24px rgba(0,0,0,.18);transform-origin:top center;cursor:pointer;overflow:hidden;',
       'transition:transform .38s cubic-bezier(.2,.8,.2,1),height .28s cubic-bezier(.2,.8,.2,1),opacity .38s,box-shadow .2s;}',
-      '#gm-cards .gm-stack.gm-focus .gm-card{height:224px;padding-bottom:46px;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card{height:auto;min-height:92px;padding-bottom:12px;}',
       '#gm-cards .gm-card:hover{box-shadow:0 3px 8px rgba(0,0,0,.18),0 14px 30px rgba(0,0,0,.24);}',
       'body.gm-stack-tilted #gm-cards .gm-card{transform-origin:center center;}',
       'body.gm-cards-on.gm-stack-tilted #gm-cards.gm-show{gap:36px 30px;}',
@@ -133,8 +133,9 @@
       '#gm-cards .gm-stack.gm-focus .gm-c-labels:empty{display:none;}',
       '#gm-cards .gm-c-labels span{font:10px/15px Roboto,sans-serif;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.12);}',
       /* per-card Archive / Delete, shown while the pointer is on the card */
-      '#gm-cards .gm-acts{position:absolute;right:8px;bottom:8px;display:none;gap:6px;}',
-      '#gm-cards .gm-stack.gm-focus .gm-card:hover .gm-acts{display:flex;}',
+      '#gm-cards .gm-acts{display:none;justify-content:flex-end;gap:6px;margin-top:10px;visibility:hidden;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card .gm-acts{display:flex;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card:hover .gm-acts{visibility:visible;}',
       '#gm-cards .gm-acts button{width:30px;height:30px;padding:0;border:0;border-radius:50%;cursor:pointer;display:flex;',
       'align-items:center;justify-content:center;background:rgba(255,255,255,.14);color:inherit;transition:background .15s;}',
       '#gm-cards.gm-light .gm-acts button{background:rgba(0,0,0,.08);}',
@@ -490,7 +491,11 @@
           var i = t.lastIndexOf('class="message"');
           if (i < 0) return '';
           var m = t.slice(i), j = m.indexOf('cellpadding=12');
-          return htmlToText(j > -1 ? m.slice(m.indexOf('>', j) + 1) : m).slice(0, 260);
+          var txt = htmlToText(j > -1 ? m.slice(m.indexOf('>', j) + 1) : m);
+          // Gmail print-view placeholders for collapsed/quoted bodies are not an excerpt
+          txt = txt.replace(/\[(?:Quoted text hidden|Message clipped|.*?View entire message.*?)\]/gi, ' ')
+                   .replace(/\s+/g, ' ').trim();
+          return txt.slice(0, 260);
         })
         .catch(function () { delete excerptCache[id]; return ''; });
     }
@@ -543,20 +548,29 @@
       // lay every card out in a grid centred on the stack (nudged only to stay on screen)
       var body = st.querySelector('.gm-stack-b'), box = document.getElementById('gm-cards');
       var sr = body.getBoundingClientRect(), br = box.getBoundingClientRect(), gap = 16;
-      var w = sr.width, h = 224;                                  // full (hovered) card height
+      var w = sr.width;
       var baseL = sr.left, baseT = sr.top + 24;                   // where a resting card sits
       var boxR = br.left + box.clientWidth;                       // excludes the scrollbar
       var fit = Math.max(1, Math.floor((boxR - br.left - 32 + gap) / (w + gap)));
       var cols = Math.min(fit, n <= 3 ? n : n === 4 ? 2 : 3);
       var rowsN = Math.ceil(n / cols);
-      var W = cols * w + (cols - 1) * gap, H = rowsN * h + (rowsN - 1) * gap;
-      var gx = baseL + w / 2 - W / 2, gy = baseT + h / 2 - H / 2;
+      function cardAt(p) { return cards[(p + off) % n]; }         // card shown at grid slot p
+      var rowH = [];                                              // tallest card per row (heights vary)
+      for (var r = 0; r < rowsN; r++) {
+        var mh = 0;
+        for (var cc = 0; cc < cols; cc++) { var pp = r * cols + cc; if (pp < n) { var hh = cardAt(pp).offsetHeight || 92; if (hh > mh) mh = hh; } }
+        rowH.push(mh);
+      }
+      var rowY = [], acc = 0;
+      for (var r2 = 0; r2 < rowsN; r2++) { rowY.push(acc); acc += rowH[r2] + gap; }
+      var W = cols * w + (cols - 1) * gap, H = acc - gap;
+      var gx = baseL + w / 2 - W / 2, gy = baseT;
       gx = Math.max(br.left + 16, Math.min(gx, boxR - 16 - W));
       gy = H <= br.height - 16 ? Math.max(br.top + 8, Math.min(gy, br.bottom - 8 - H)) : br.top + 8;
       cards.forEach(function (c, i) {
         var pos = (i - off + n) % n, row = Math.floor(pos / cols), col = pos % cols;
         var inRow = row === rowsN - 1 ? n - row * cols : cols;     // centre a short last row
-        var x = gx + (cols - inRow) * (w + gap) / 2 + col * (w + gap), y = gy + row * (h + gap);
+        var x = gx + (cols - inRow) * (w + gap) / 2 + col * (w + gap), y = gy + rowY[row];
         c._pos = pos;
         c.classList.toggle('gm-top', pos === 0);
         c.style.zIndex = String(100 + n - pos);
