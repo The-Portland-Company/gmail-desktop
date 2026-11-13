@@ -331,28 +331,50 @@
     if (!tbody) return;
     applying = true;
     try {
-      clearGroups(tbody);
       var rows = [].slice.call(tbody.querySelectorAll('tr.zA'));
-      if (MODE === 'none' || !rows.length) { return; }
+      if (MODE === 'none' || !rows.length) { clearGroups(tbody); return; }
 
-      var order = buildGroups(rows);
-
-      // Re-emit rows under headers, in order.
-      var frag = document.createDocumentFragment();
-      order.forEach(function (g) {
+      // The layout we want: headers + rows, in order.
+      var want = [];
+      function head(label, count, key, sub, hidden) {
+        want.push({ h: true, key: key, label: label, count: count, sub: sub, hidden: hidden,
+          sig: [key, label, count, sub, hidden, collapsed.has(key)].join('\u0001') });
+      }
+      buildGroups(rows).forEach(function (g) {
         var total = g.rows.length || g.subOrder.reduce(function (a, s) { return a + s.rows.length; }, 0);
         var gHidden = collapsed.has(g.key);
-        frag.appendChild(makeHeader(g.label, total, g.key, false));
+        head(g.label, total, g.key, false, false);
         if (MODE === 'label-sender') {
           g.subOrder.forEach(function (s) {
             var subHidden = gHidden || collapsed.has(s.key);
-            var h = makeHeader(s.label, s.rows.length, s.key, true);
-            if (gHidden) h.classList.add('gm-collapsed-row');
-            frag.appendChild(h);
-            s.rows.forEach(function (r) { if (subHidden) r.classList.add('gm-collapsed-row'); frag.appendChild(r); });
+            head(s.label, s.rows.length, s.key, true, gHidden);
+            s.rows.forEach(function (r) { want.push({ row: r, hidden: subHidden }); });
           });
         } else {
-          g.rows.forEach(function (r) { if (gHidden) r.classList.add('gm-collapsed-row'); frag.appendChild(r); });
+          g.rows.forEach(function (r) { want.push({ row: r, hidden: gHidden }); });
+        }
+      });
+
+      // Already laid out that way? Then touch nothing. This makes re-applying free, so it
+      // can run the instant Gmail redraws the list (no flash of missing group headers).
+      var kids = tbody.children, same = kids.length === want.length;
+      for (var i = 0; same && i < want.length; i++) {
+        var w = want[i], k = kids[i];
+        same = w.h ? (k._gmSig === w.sig) : (k === w.row && k.classList.contains('gm-collapsed-row') === w.hidden);
+      }
+      if (same) return;
+
+      clearGroups(tbody);
+      var frag = document.createDocumentFragment();
+      want.forEach(function (w) {
+        if (w.h) {
+          var h = makeHeader(w.label, w.count, w.key, w.sub);
+          h._gmSig = w.sig;
+          if (w.hidden) h.classList.add('gm-collapsed-row');
+          frag.appendChild(h);
+        } else {
+          if (w.hidden) w.row.classList.add('gm-collapsed-row');
+          frag.appendChild(w.row);
         }
       });
       tbody.appendChild(frag);
@@ -648,6 +670,14 @@
       // ignore our own card rendering
       var box = document.getElementById('gm-cards');
       if (box && muts.every(function (m) { return box === m.target || box.contains(m.target); })) return;
+      // Gmail redrew the list (delete, archive, new mail): regroup right now, before the
+      // next paint, instead of waiting for the debounce.
+      try {
+        var lt = listTable();
+        if (lt && muts.some(function (m) { return lt.contains(m.target); })) {
+          if (VIEW === 'cards') renderCards(); else if (MODE !== 'none') applyGrouping();
+        }
+      } catch (e) {}
       schedule();
     });
     mo.observe(document.body, { childList: true, subtree: true });
