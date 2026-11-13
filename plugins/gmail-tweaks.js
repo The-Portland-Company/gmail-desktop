@@ -73,7 +73,7 @@
       '#gm-cards{display:none;position:fixed;z-index:3;overflow-y:auto;overflow-x:hidden;background:#202124;}',
       '#gm-cards.gm-light{background:#fff;}',
       'body.gm-cards-on #gm-cards.gm-show{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--gm-gap,8px) calc(var(--gm-gap,8px) * 0.8);',
-      'align-items:start;align-content:start;padding:18px 24px 48px;box-sizing:border-box;font-family:"Google Sans",Roboto,sans-serif;}',
+      'align-items:start;align-content:start;padding:33px 24px 48px;box-sizing:border-box;font-family:"Google Sans",Roboto,sans-serif;}',
       '#gm-cards{color:#e8eaed;}',
       '#gm-cards.gm-light{color:#202124;}',
       '#gm-cards.gm-light .gm-card{background:#fff;color:#202124;}',
@@ -720,7 +720,6 @@
       // start below the list toolbar so the Group / View controls stay reachable
       var top = pr.top, tb = listToolbar();
       if (tb && tb.offsetHeight) { var tr = tb.getBoundingClientRect(); if (tr.bottom > top && tr.bottom < pr.bottom - 80) top = tr.bottom; }
-      top += 15;   // clear the list toolbar so cards don't overlap the controls above
       box.style.left = pr.left + 'px'; box.style.top = top + 'px';
       box.style.width = pr.width + 'px'; box.style.height = (pr.bottom - top) + 'px';
       box.style.background = bg.color;
