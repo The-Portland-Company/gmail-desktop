@@ -110,8 +110,14 @@
       '#gm-cards .gm-stack.gm-open .gm-stack-b{height:auto;display:flex;flex-direction:column;gap:10px;}',
       '#gm-cards .gm-stack.gm-open .gm-card{position:relative;transform:none !important;opacity:1 !important;pointer-events:auto !important;}',
       '#gm-cards .gm-stack.gm-open .gm-next{display:none;}',
-      '#gm-cards .gm-c-top{flex:none;display:flex;justify-content:space-between;gap:10px;font:12px/16px Roboto,sans-serif;opacity:.75;white-space:nowrap;}',
+      '#gm-cards .gm-c-top{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;font:12px/18px Roboto,sans-serif;white-space:nowrap;}',
+      '#gm-cards .gm-c-from,#gm-cards .gm-c-date{opacity:.75;}',
+      '#gm-cards .gm-c-who{display:flex;align-items:center;min-width:0;}',
       '#gm-cards .gm-c-from{overflow:hidden;text-overflow:ellipsis;}',
+      /* count badge, left of the sender, on the top card of a stack */
+      '#gm-cards .gm-badge{display:none;flex:none;min-width:8px;height:18px;padding:0 5px;margin-right:7px;border-radius:9px;',
+      'background:#8ab4f8;color:#202124;font:700 11px/18px "Google Sans",sans-serif;text-align:center;opacity:1;}',
+      '#gm-cards .gm-card.gm-top .gm-badge{display:inline-block;}',
       /* full subject: wraps instead of being cut to one line (up to 4 lines) */
       '#gm-cards .gm-c-sub{flex:none;font:500 14px/20px "Google Sans",sans-serif;margin-top:6px;white-space:normal;overflow-wrap:anywhere;',
       'display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}',
@@ -120,7 +126,8 @@
       '#gm-cards .gm-c-labels:empty{display:none;}',
       '#gm-cards .gm-c-labels span{font:10px/15px Roboto,sans-serif;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.12);}',
       '#gm-cards .gm-unread .gm-c-sub{font-weight:700;}',
-      '#gm-cards .gm-unread .gm-c-top{opacity:1;font-weight:600;}',
+      '#gm-cards .gm-unread .gm-c-top{font-weight:600;}',
+      '#gm-cards .gm-unread .gm-c-from,#gm-cards .gm-unread .gm-c-date{opacity:1;}',
       '#gm-cards .gm-unread .gm-c-from:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#8ab4f8;margin-right:6px;}'
     ].join('');
     var s = document.createElement('style');
@@ -471,6 +478,7 @@
         var inRow = row === rowsN - 1 ? n - row * cols : cols;     // centre a short last row
         var x = gx + (cols - inRow) * (w + gap) / 2 + col * (w + gap), y = gy + row * (h + gap);
         c._pos = pos;
+        c.classList.toggle('gm-top', pos === 0);
         c.style.zIndex = String(100 + n - pos);
         c.style.transform = 'translate(' + (x - baseL) + 'px,' + (y - baseT) + 'px)';
         c.style.opacity = '1';
@@ -488,6 +496,7 @@
     cards.forEach(function (c, i) {
       var pos = (i - off + n) % n, p = Math.min(pos, 3);
       c._pos = pos;
+      c.classList.toggle('gm-top', pos === 0);
       c.style.zIndex = String(n - pos);
       c.style.transform = STACK === 'tilted'
         ? 'translateY(' + (-p * 5) + 'px) rotate(' + TILT[p] + 'deg) scale(' + (1 - p * 0.02) + ')'
@@ -496,12 +505,15 @@
       c.style.pointerEvents = pos < 3 ? '' : 'none';
     });
   }
-  function makeCard(r, st, i) {
+  function makeCard(r, st, i, count) {
     var d = rowData(r);
     var c = document.createElement('div');
     c.className = 'gm-card' + (d.unread ? ' gm-unread' : '');
     var top = mk('div', 'gm-c-top');
-    top.appendChild(mk('span', 'gm-c-from', d.from));
+    var who = mk('span', 'gm-c-who');
+    if (count > 1) { var bd = mk('span', 'gm-badge', String(count)); bd.title = count + ' conversations'; who.appendChild(bd); }
+    who.appendChild(mk('span', 'gm-c-from', d.from));
+    top.appendChild(who);
     top.appendChild(mk('span', 'gm-c-date', d.date));
     c.appendChild(top);
     c.appendChild(mk('div', 'gm-c-sub', d.subject));
@@ -520,31 +532,16 @@
     var st = document.createElement('div');
     st.className = 'gm-stack' + (stackOpen.has(key) ? ' gm-open' : '');
     st._key = key;
-    if (label !== null) {
-      var h = document.createElement('div');
-      h.className = 'gm-stack-h';
+    // No title row above a stack: the sender is already on the card, and the count is a
+    // badge on the top card. Only Label grouping keeps one (the label isn't on the card).
+    if (label !== null && MODE === 'label') {
+      var h = mk('div', 'gm-stack-h');
       h.appendChild(mk('span', 'gm-name', label));
-      h.appendChild(mk('span', 'gm-count', String(rows.length)));
-      h.title = rows.length > 1 ? 'Show all ' + rows.length : label;
-      if (rows.length > 1) {
-        var nx = document.createElement('span');
-        nx.className = 'gm-next'; nx.textContent = 'next \u203a';
-        nx.addEventListener('click', function (e) {
-          e.stopPropagation();
-          stackOff[key] = ((stackOff[key] || 0) + 1) % rows.length; layoutStack(st);
-        });
-        h.appendChild(nx);
-        h.addEventListener('click', function () {
-          if (stackOpen.has(key)) stackOpen.delete(key); else stackOpen.add(key);
-          st.classList.toggle('gm-open', stackOpen.has(key));
-          layoutStack(st);
-        });
-      }
       st.appendChild(h);
     }
     var b = document.createElement('div');
     b.className = 'gm-stack-b';
-    st._cards = rows.map(function (r, i) { var c = makeCard(r, st, i); b.appendChild(c); return c; });
+    st._cards = rows.map(function (r, i) { var c = makeCard(r, st, i, rows.length); b.appendChild(c); return c; });
     if (rows.length > 1) { st._pad = mk('div', 'gm-pad'); b.appendChild(st._pad); }
     st.appendChild(b);
     layoutStack(st);
