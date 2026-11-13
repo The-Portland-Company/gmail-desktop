@@ -92,14 +92,15 @@
       '#gm-cards .gm-stack-h .gm-count{flex:none;opacity:.8;font-weight:500;background:rgba(255,255,255,.1);border-radius:10px;padding:0 8px;}',
       '#gm-cards .gm-stack-h .gm-next{flex:none;margin-left:auto;opacity:.6;font-weight:500;padding:0 6px;border-radius:10px;}',
       '#gm-cards .gm-stack-h .gm-next:hover{opacity:1;background:rgba(255,255,255,.1);}',
-      '#gm-cards .gm-stack-b{position:relative;height:160px;}',
+      '#gm-cards .gm-stack-b{position:relative;height:180px;}',
       /* hover focus: the hovered stack spreads out, everything else dims */
       '#gm-cards .gm-stack{position:relative;transition:opacity .22s;}',
       '#gm-cards .gm-sec,#gm-cards .gm-opts{transition:opacity .22s;}',
       '#gm-cards.gm-dim .gm-stack:not(.gm-focus),#gm-cards.gm-dim .gm-sec,#gm-cards.gm-dim .gm-opts{opacity:.14;}',
       '#gm-cards .gm-stack.gm-focus{z-index:30;}',
+      '#gm-cards .gm-pad{position:absolute;display:none;z-index:50;}',
       '#gm-cards .gm-stack.gm-focus .gm-card{box-shadow:0 4px 10px rgba(0,0,0,.22),0 18px 40px rgba(0,0,0,.32);}',
-      '#gm-cards .gm-card{position:absolute;left:0;right:0;bottom:0;height:136px;box-sizing:border-box;padding:10px 12px;',
+      '#gm-cards .gm-card{position:absolute;left:0;right:0;bottom:0;height:156px;box-sizing:border-box;padding:10px 12px;display:flex;flex-direction:column;',
       'border-radius:18px;background:#2b2c30;color:#e8eaed;border:5px solid #fff;',
       'box-shadow:0 2px 6px rgba(0,0,0,.14),0 10px 24px rgba(0,0,0,.18);transform-origin:top center;cursor:pointer;overflow:hidden;',
       'transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .38s,box-shadow .2s;}',
@@ -109,12 +110,14 @@
       '#gm-cards .gm-stack.gm-open .gm-stack-b{height:auto;display:flex;flex-direction:column;gap:10px;}',
       '#gm-cards .gm-stack.gm-open .gm-card{position:relative;transform:none !important;opacity:1 !important;pointer-events:auto !important;}',
       '#gm-cards .gm-stack.gm-open .gm-next{display:none;}',
-      '#gm-cards .gm-c-top{display:flex;justify-content:space-between;gap:10px;font:12px/16px Roboto,sans-serif;opacity:.75;white-space:nowrap;}',
+      '#gm-cards .gm-c-top{flex:none;display:flex;justify-content:space-between;gap:10px;font:12px/16px Roboto,sans-serif;opacity:.75;white-space:nowrap;}',
       '#gm-cards .gm-c-from{overflow:hidden;text-overflow:ellipsis;}',
-      '#gm-cards .gm-c-sub{font:500 14px/20px "Google Sans",sans-serif;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '#gm-cards .gm-c-snip{font:12px/17px Roboto,sans-serif;opacity:.62;margin-top:4px;display:-webkit-box;',
-      '-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
-      '#gm-cards .gm-c-labels{position:absolute;left:12px;right:12px;bottom:8px;display:flex;gap:4px;overflow:hidden;white-space:nowrap;}',
+      /* full subject: wraps instead of being cut to one line (up to 4 lines) */
+      '#gm-cards .gm-c-sub{flex:none;font:500 14px/20px "Google Sans",sans-serif;margin-top:6px;white-space:normal;overflow-wrap:anywhere;',
+      'display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}',
+      '#gm-cards .gm-c-snip{flex:1 1 0;min-height:0;font:12px/17px Roboto,sans-serif;opacity:.62;margin-top:4px;overflow:hidden;}',
+      '#gm-cards .gm-c-labels{flex:none;order:3;display:flex;gap:4px;overflow:hidden;white-space:nowrap;margin-top:4px;}',
+      '#gm-cards .gm-c-labels:empty{display:none;}',
       '#gm-cards .gm-c-labels span{font:10px/15px Roboto,sans-serif;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.12);}',
       '#gm-cards .gm-unread .gm-c-sub{font-weight:700;}',
       '#gm-cards .gm-unread .gm-c-top{opacity:1;font-weight:600;}',
@@ -448,23 +451,38 @@
   function isSpread(st) { return focusSt === st && st._cards.length > 1 && !stackOpen.has(st._key); }
   function layoutStack(st) {
     var cards = st._cards, n = cards.length, off = (stackOff[st._key] || 0) % n;
+    if (st._pad) st._pad.style.display = 'none';
     if (isSpread(st)) {
-      // lay every card out in a grid growing from the stack toward whichever side has room
+      // lay every card out in a grid centred on the stack (nudged only to stay on screen)
       var body = st.querySelector('.gm-stack-b'), box = document.getElementById('gm-cards');
       var sr = body.getBoundingClientRect(), br = box.getBoundingClientRect(), gap = 16;
-      var w = sr.width, h = cards[0].offsetHeight, maxCols = Math.min(n, 3);
-      var right = Math.floor((br.right - 24 - sr.left + gap) / (w + gap));
-      var left = Math.floor((sr.right - br.left - 24 + gap) / (w + gap));
-      var dir = (right >= maxCols || right >= left) ? 1 : -1;
-      var cols = Math.max(1, Math.min(maxCols, dir > 0 ? right : left));
+      var w = sr.width, h = cards[0].offsetHeight;
+      var baseL = sr.left, baseT = sr.bottom - h;                 // where a resting card sits
+      var boxR = br.left + box.clientWidth;                       // excludes the scrollbar
+      var fit = Math.max(1, Math.floor((boxR - br.left - 32 + gap) / (w + gap)));
+      var cols = Math.min(fit, n <= 3 ? n : n === 4 ? 2 : 3);
+      var rowsN = Math.ceil(n / cols);
+      var W = cols * w + (cols - 1) * gap, H = rowsN * h + (rowsN - 1) * gap;
+      var gx = baseL + w / 2 - W / 2, gy = baseT + h / 2 - H / 2;
+      gx = Math.max(br.left + 16, Math.min(gx, boxR - 16 - W));
+      gy = H <= br.height - 16 ? Math.max(br.top + 8, Math.min(gy, br.bottom - 8 - H)) : br.top + 8;
       cards.forEach(function (c, i) {
-        var pos = (i - off + n) % n;
+        var pos = (i - off + n) % n, row = Math.floor(pos / cols), col = pos % cols;
+        var inRow = row === rowsN - 1 ? n - row * cols : cols;     // centre a short last row
+        var x = gx + (cols - inRow) * (w + gap) / 2 + col * (w + gap), y = gy + row * (h + gap);
         c._pos = pos;
         c.style.zIndex = String(100 + n - pos);
-        c.style.transform = 'translate(' + (dir * (pos % cols) * (w + gap)) + 'px,' + (Math.floor(pos / cols) * (h + gap)) + 'px)';
+        c.style.transform = 'translate(' + (x - baseL) + 'px,' + (y - baseT) + 'px)';
         c.style.opacity = '1';
         c.style.pointerEvents = '';
       });
+      // invisible pad under the spread so the gaps between cards still count as hovering
+      if (st._pad) {
+        var ps = st._pad.style;
+        ps.display = 'block';
+        ps.left = (gx - sr.left - 14) + 'px'; ps.top = (gy - sr.top - 14) + 'px';
+        ps.width = (W + 28) + 'px'; ps.height = (H + 28) + 'px';
+      }
       return;
     }
     cards.forEach(function (c, i) {
@@ -527,6 +545,7 @@
     var b = document.createElement('div');
     b.className = 'gm-stack-b';
     st._cards = rows.map(function (r, i) { var c = makeCard(r, st, i); b.appendChild(c); return c; });
+    if (rows.length > 1) { st._pad = mk('div', 'gm-pad'); b.appendChild(st._pad); }
     st.appendChild(b);
     layoutStack(st);
     // small delays so sweeping the mouse across the grid doesn't make stacks pop open
