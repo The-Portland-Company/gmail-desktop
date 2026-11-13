@@ -93,6 +93,12 @@
       '#gm-cards .gm-stack-h .gm-next{flex:none;margin-left:auto;opacity:.6;font-weight:500;padding:0 6px;border-radius:10px;}',
       '#gm-cards .gm-stack-h .gm-next:hover{opacity:1;background:rgba(255,255,255,.1);}',
       '#gm-cards .gm-stack-b{position:relative;height:160px;}',
+      /* hover focus: the hovered stack spreads out, everything else dims */
+      '#gm-cards .gm-stack{position:relative;transition:opacity .22s;}',
+      '#gm-cards .gm-sec,#gm-cards .gm-opts{transition:opacity .22s;}',
+      '#gm-cards.gm-dim .gm-stack:not(.gm-focus),#gm-cards.gm-dim .gm-sec,#gm-cards.gm-dim .gm-opts{opacity:.14;}',
+      '#gm-cards .gm-stack.gm-focus{z-index:30;}',
+      '#gm-cards .gm-stack.gm-focus .gm-card{box-shadow:0 4px 10px rgba(0,0,0,.22),0 18px 40px rgba(0,0,0,.32);}',
       '#gm-cards .gm-card{position:absolute;left:0;right:0;bottom:0;height:136px;box-sizing:border-box;padding:10px 12px;',
       'border-radius:18px;background:#2b2c30;color:#e8eaed;border:5px solid #fff;',
       'box-shadow:0 2px 6px rgba(0,0,0,.14),0 10px 24px rgba(0,0,0,.18);transform-origin:top center;cursor:pointer;overflow:hidden;',
@@ -428,8 +434,39 @@
       });
     } catch (e) {}
   }
+  // Hover focus: one stack at a time is spread out with the rest of the canvas dimmed.
+  var focusSt = null, focusT = null;
+  function setFocus(st) {
+    clearTimeout(focusT);
+    if (focusSt === st) return;
+    var old = focusSt, box = document.getElementById('gm-cards');
+    focusSt = st;
+    if (old) { old.classList.remove('gm-focus'); if (old.isConnected) layoutStack(old); }
+    if (box) box.classList.toggle('gm-dim', !!st);
+    if (st) { st.classList.add('gm-focus'); layoutStack(st); }
+  }
+  function isSpread(st) { return focusSt === st && st._cards.length > 1 && !stackOpen.has(st._key); }
   function layoutStack(st) {
     var cards = st._cards, n = cards.length, off = (stackOff[st._key] || 0) % n;
+    if (isSpread(st)) {
+      // lay every card out in a grid growing from the stack toward whichever side has room
+      var body = st.querySelector('.gm-stack-b'), box = document.getElementById('gm-cards');
+      var sr = body.getBoundingClientRect(), br = box.getBoundingClientRect(), gap = 16;
+      var w = sr.width, h = cards[0].offsetHeight, maxCols = Math.min(n, 3);
+      var right = Math.floor((br.right - 24 - sr.left + gap) / (w + gap));
+      var left = Math.floor((sr.right - br.left - 24 + gap) / (w + gap));
+      var dir = (right >= maxCols || right >= left) ? 1 : -1;
+      var cols = Math.max(1, Math.min(maxCols, dir > 0 ? right : left));
+      cards.forEach(function (c, i) {
+        var pos = (i - off + n) % n;
+        c._pos = pos;
+        c.style.zIndex = String(100 + n - pos);
+        c.style.transform = 'translate(' + (dir * (pos % cols) * (w + gap)) + 'px,' + (Math.floor(pos / cols) * (h + gap)) + 'px)';
+        c.style.opacity = '1';
+        c.style.pointerEvents = '';
+      });
+      return;
+    }
     cards.forEach(function (c, i) {
       var pos = (i - off + n) % n, p = Math.min(pos, 3);
       c._pos = pos;
@@ -456,8 +493,8 @@
     c.appendChild(lb);
     c.title = d.subject;
     c.addEventListener('click', function () {
-      if (st._cards.length > 1 && !stackOpen.has(st._key) && c._pos > 0) { stackOff[st._key] = i; layoutStack(st); }
-      else openRow(r);
+      if (st._cards.length > 1 && !stackOpen.has(st._key) && !isSpread(st) && c._pos > 0) { stackOff[st._key] = i; layoutStack(st); }
+      else { setFocus(null); openRow(r); }
     });
     return c;
   }
@@ -482,6 +519,7 @@
         h.addEventListener('click', function () {
           if (stackOpen.has(key)) stackOpen.delete(key); else stackOpen.add(key);
           st.classList.toggle('gm-open', stackOpen.has(key));
+          layoutStack(st);
         });
       }
       st.appendChild(h);
@@ -491,6 +529,9 @@
     st._cards = rows.map(function (r, i) { var c = makeCard(r, st, i); b.appendChild(c); return c; });
     st.appendChild(b);
     layoutStack(st);
+    // small delays so sweeping the mouse across the grid doesn't make stacks pop open
+    st.addEventListener('mouseenter', function () { clearTimeout(focusT); focusT = setTimeout(function () { setFocus(st); }, 140); });
+    st.addEventListener('mouseleave', function () { clearTimeout(focusT); focusT = setTimeout(function () { if (focusSt === st) setFocus(null); }, 200); });
     return st;
   }
   // Background of the list area (the overlay copies it, and cards follow light/dark).
@@ -568,6 +609,7 @@
           }
         });
       }
+      clearTimeout(focusT); focusSt = null; box.classList.remove('gm-dim');
       box.textContent = '';
       box.appendChild(frag);
     } catch (e) { /* leave the list usable on error */ }
