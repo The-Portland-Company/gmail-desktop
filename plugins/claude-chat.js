@@ -89,8 +89,6 @@
       background:#17181b; border-bottom:1px solid #3c4043; }
     .head img { width:26px; height:26px; border-radius:6px; }
     .head .title { font-weight:600; font-size:14px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .head .state { font-size:11px; padding:3px 8px; border-radius:10px; background:#2a2b2f; color:#9aa0a6; }
-    .head .state.working { color:#f59e0b; } .head .state.success { color:#22c55e; } .head .state.error { color:#ef4444; }
     .head button { background:none; border:none; color:#9aa0a6; cursor:pointer; font-size:15px; padding:4px 7px; border-radius:6px; line-height:1; }
     .head button:hover { background:#2a2b2f; color:#e8eaed; }
 
@@ -132,6 +130,22 @@
     .msg.tool { align-self:flex-start; background:transparent; color:#80868b; font-size:11px; padding:2px 4px; font-style:italic; }
     .msg.err { align-self:flex-start; background:#3a1e1e; color:#f7b4b4; }
 
+    /* in-chat working indicator */
+    .thinking { padding:4px 12px 10px; }
+    .thinking.hidden { display:none; }
+    .thinking .trow { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .thinking .tlabel { font-size:12px; color:#9aa0a6; }
+    .thinking .tdots { display:inline-flex; gap:4px; }
+    .thinking .tdots i { width:6px; height:6px; border-radius:50%; background:#f59e0b; display:inline-block;
+      animation:tbounce 1.2s infinite ease-in-out both; }
+    .thinking .tdots i:nth-child(1){ animation-delay:-.24s; }
+    .thinking .tdots i:nth-child(2){ animation-delay:-.12s; }
+    @keyframes tbounce { 0%,80%,100%{ transform:scale(.5); opacity:.4; } 40%{ transform:scale(1); opacity:1; } }
+    .thinking .tbar { height:3px; border-radius:3px; background:#2a2b2f; overflow:hidden; position:relative; }
+    .thinking .tbar span { position:absolute; left:0; top:0; height:100%; width:40%; border-radius:3px;
+      background:linear-gradient(90deg,#f59e0b,#fbbf24); animation:tslide 1.3s infinite ease-in-out; }
+    @keyframes tslide { 0%{ left:-40%; } 100%{ left:100%; } }
+
     .footwrap { border-top:1px solid #3c4043; background:#17181b; }
     .opts { display:flex; gap:8px; padding:8px 10px 0; }
     .opts label { flex:1; display:flex; flex-direction:column; gap:3px; font-size:10px;
@@ -157,7 +171,6 @@
     <div class="head">
       <img src="${ICON}" alt=""/>
       <span class="title">Prime Agent</span>
-      <span class="state">idle</span>
       <button class="sessions" title="Chats">☰</button>
       <button class="new" title="New chat">+</button>
       <button class="min" title="Collapse">—</button>
@@ -171,6 +184,10 @@
 
     <div class="tasks hidden"><div class="lbl">Tasks</div><div class="tasklist"></div></div>
     <div class="log"></div>
+    <div class="thinking hidden">
+      <div class="trow"><span class="tdots"><i></i><i></i><i></i></span><span class="tlabel">Prime Agent is thinking…</span></div>
+      <div class="tbar"><span></span></div>
+    </div>
     <div class="footwrap">
       <div class="opts">
         <label>Model
@@ -202,7 +219,7 @@
 
   var $ = function (s) { return root.querySelector(s); };
   var fab = $('.fab'), dot = $('.dot'), panel = $('.panel');
-  var titleEl = $('.head .title'), stateEl = $('.state');
+  var titleEl = $('.head .title'), thinkingEl = $('.thinking');
   var logEl = $('.log'), tasksBox = $('.tasks'), taskList = $('.tasklist');
   var input = $('.input'), sendBtn = $('.send'), stopBtn = $('.stop'), minBtn = $('.min');
   var modelSel = $('.model'), effortSel = $('.effort');
@@ -220,9 +237,9 @@
 
   function setState(s) { // idle | working | success | error
     dot.className = 'dot ' + s;
-    stateEl.className = 'state ' + (s === 'idle' ? '' : s);
-    stateEl.textContent = s;
     running = (s === 'working');
+    thinkingEl.classList.toggle('hidden', !running);
+    if (running) logEl.scrollTop = logEl.scrollHeight;
     stopBtn.classList.toggle('hidden', !running);
     sendBtn.classList.toggle('hidden', running);
   }
