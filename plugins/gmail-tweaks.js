@@ -129,9 +129,31 @@
     var t = document.querySelector('div[role=main] table.zt') || document.querySelector('div[role=main] table[role=grid]') || document.querySelector('div[role=main] table.F');
     return t;
   }
+  var NOREPLY = /(^|[^a-z])(no|do[-_. ]?not)[-_. ]?reply/i;
+  // "noreply@mail.github.com" -> "Github" (the brand = registrable domain's main label)
+  function brandFromEmail(email) {
+    var host = String(email || '').split('@')[1];
+    if (!host) return '';
+    var p = host.toLowerCase().split('.');
+    var i = p.length - 2;
+    if (p.length > 2 && p[p.length - 1].length === 2 && /^(co|com|org|net|gov|ac|edu)$/.test(p[i])) i--;
+    var b = p[Math.max(i, 0)] || '';
+    return b.charAt(0).toUpperCase() + b.slice(1);
+  }
+  // One sender = one display name, regardless of which address or Google Group relayed it.
+  function senderIdentity(name, email) {
+    var n = String(name || '').replace(/\s+/g, ' ').trim();
+    // Google Groups rewrites the sender as "'Real Name' via Group Name" from the group's address.
+    var via = n.match(/^'?(.+?)'?:?\s+via\s+.+$/i);
+    if (via) n = via[1].trim();
+    n = n.replace(/^['"]+|['"]+$/g, '').trim();
+    // No real name (Gmail shows the local part) or a no-reply name -> show the brand instead.
+    if (!n || n.indexOf('@') > -1 || NOREPLY.test(n)) n = brandFromEmail(email) || n || email || '?';
+    return { key: n.toLowerCase(), label: n };
+  }
   function rowSender(r) {
     var s = r.querySelector('span.yP[email], span[email]');
-    if (s) return { key: (s.getAttribute('email') || s.getAttribute('name') || s.innerText || '?').toLowerCase(), label: (s.getAttribute('name') || s.innerText || s.getAttribute('email') || '?').trim() };
+    if (s) return senderIdentity(s.getAttribute('name') || s.innerText, s.getAttribute('email'));
     return { key: '?', label: '(unknown sender)' };
   }
   function rowLabels(r) {
