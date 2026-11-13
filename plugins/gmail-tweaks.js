@@ -18,6 +18,7 @@
     group: 'gmTweaks.groupMode',   // none|sender|label|label-sender
     collapsed: 'gmTweaks.collapsed',
     view: 'gmTweaks.viewMode',     // list|cards
+    gap: 'gmTweaks.cardGap',       // px spacing between card groups
     stack: 'gmTweaks.stackStyle'   // even|tilted
   };
   function get(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
@@ -71,7 +72,7 @@
       /* (an overlay on top of the list — Gmail's own list DOM is left untouched, it hangs if altered) */
       '#gm-cards{display:none;position:fixed;z-index:3;overflow-y:auto;overflow-x:hidden;background:#202124;}',
       '#gm-cards.gm-light{background:#fff;}',
-      'body.gm-cards-on #gm-cards.gm-show{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:30px 22px;',
+      'body.gm-cards-on #gm-cards.gm-show{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--gm-gap,8px) calc(var(--gm-gap,8px) * 0.8);',
       'align-items:start;align-content:start;padding:18px 24px 48px;box-sizing:border-box;font-family:"Google Sans",Roboto,sans-serif;}',
       '#gm-cards{color:#e8eaed;}',
       '#gm-cards.gm-light{color:#202124;}',
@@ -84,6 +85,8 @@
       '#gm-cards .gm-opts button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:inherit;',
       'border-radius:14px;padding:3px 12px;cursor:pointer;font:inherit;}',
       '#gm-cards .gm-opts button.gm-active{background:#8ab4f8;color:#202124;border-color:#8ab4f8;font-weight:600;}',
+      '#gm-cards .gm-opts input[type=range]{width:96px;accent-color:#8ab4f8;cursor:pointer;margin:0 2px;}',
+      '#gm-cards .gm-opts .gm-sep2{width:1px;height:16px;background:rgba(255,255,255,.18);margin:0 8px;}',
       '#gm-cards .gm-sec{grid-column:1/-1;font:600 13px/20px "Google Sans",sans-serif;opacity:.85;',
       'padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.1);}',
       '#gm-cards .gm-stack-h{display:flex;align-items:center;gap:8px;height:24px;margin-bottom:4px;',
@@ -108,7 +111,7 @@
       '#gm-cards .gm-stack.gm-focus .gm-card{height:auto;min-height:92px;padding-bottom:12px;}',
       '#gm-cards .gm-card:hover{box-shadow:0 3px 8px rgba(0,0,0,.18),0 14px 30px rgba(0,0,0,.24);}',
       'body.gm-stack-tilted #gm-cards .gm-card{transform-origin:center center;}',
-      'body.gm-cards-on.gm-stack-tilted #gm-cards.gm-show{gap:36px 30px;}',
+      'body.gm-cards-on.gm-stack-tilted #gm-cards.gm-show{gap:calc(var(--gm-gap,8px) + 8px) calc(var(--gm-gap,8px) + 4px);}',
       '#gm-cards .gm-stack.gm-open .gm-stack-b{height:auto;display:flex;flex-direction:column;gap:10px;}',
       '#gm-cards .gm-stack.gm-open .gm-card{position:relative;transform:none !important;opacity:1 !important;pointer-events:auto !important;}',
       '#gm-cards .gm-stack.gm-open .gm-next{display:none;}',
@@ -430,6 +433,9 @@
   // behind it). Click the top card to open the message, a card behind it (or
   // "next") to bring another forward, and the stack's title to fan it out.
   var VIEW = get(LS.view, 'list');
+  var GAP_MIN = 4, GAP_MAX = 40;
+  var GAP = Math.max(GAP_MIN, Math.min(GAP_MAX, parseInt(get(LS.gap, String(GAP_MIN)), 10) || GAP_MIN));
+  function applyGap() { var b = document.getElementById('gm-cards'); if (b) b.style.setProperty('--gm-gap', GAP + 'px'); }
   var stackOff = {};            // group key -> index of the card currently on top
   var stackOpen = new Set();    // group keys that are fanned out
   var cardSig = '';
@@ -673,6 +679,15 @@
   function hideCards() { var b = document.getElementById('gm-cards'); if (b) b.classList.remove('gm-show'); }
   function stackOptions() {
     var o = mk('div', 'gm-opts');
+    o.appendChild(mk('span', 'gm-lbl', 'Spacing:'));
+    var sl = document.createElement('input');
+    sl.type = 'range'; sl.min = GAP_MIN; sl.max = GAP_MAX; sl.step = 1; sl.value = GAP;
+    sl.title = 'Spacing between card groups';
+    sl.addEventListener('input', function () {
+      GAP = parseInt(sl.value, 10) || GAP_MIN; set(LS.gap, String(GAP)); applyGap();
+    });
+    o.appendChild(sl);
+    o.appendChild(mk('span', 'gm-sep2'));
     o.appendChild(mk('span', 'gm-lbl', 'Stack:'));
     [['even', 'Even'], ['tilted', 'Tilted']].forEach(function (p) {
       var b = mk('button', p[0] === STACK ? 'gm-active' : '', p[1]);
@@ -708,6 +723,7 @@
       box.style.left = pr.left + 'px'; box.style.top = top + 'px';
       box.style.width = pr.width + 'px'; box.style.height = (pr.bottom - top) + 'px';
       box.style.background = bg.color;
+      box.style.setProperty('--gm-gap', GAP + 'px');
       box.classList.toggle('gm-light', !bg.dark);
       box.classList.add('gm-show');
       var rows = [].slice.call(tbody.querySelectorAll('tr.zA'));
